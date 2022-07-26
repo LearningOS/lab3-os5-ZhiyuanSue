@@ -31,7 +31,7 @@ impl TaskManager {
     }
     /// Take a process out of the ready queue
     pub fn fetch(&mut self) -> Option<Arc<TaskControlBlock>> {
-        let mut maxpass=BigStride;
+        let mut maxpass=0x7fffffff;
         let mut mini=0;
         for i in 0..self.ready_queue.len()
         {
