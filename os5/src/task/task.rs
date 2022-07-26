@@ -2,7 +2,7 @@
 
 use super::TaskContext;
 use super::{pid_alloc, KernelStack, PidHandle};
-use crate::config::{TRAP_CONTEXT,MAX_SYSCALL_NUM};
+use crate::config::{TRAP_CONTEXT,MAX_SYSCALL_NUM,BigStride};
 use crate::mm::{MemorySet, PhysPageNum, VirtAddr, KERNEL_SPACE};
 use crate::sync::UPSafeCell;
 use crate::trap::{trap_handler, TrapContext};
@@ -52,6 +52,9 @@ pub struct TaskControlBlockInner {
     /// It is set when active exit or execution error occurs
     pub exit_code: i32,
 
+    pub pass: isize,
+    pub stride: isize,
+    pub prio: isize,
     pub taskinfo:TaskInfoBlock,
 }
 
@@ -117,6 +120,9 @@ impl TaskControlBlock {
                     parent: None,
                     children: Vec::new(),
                     exit_code: 0,
+                    pass:0,
+                    stride:BigStride/16,
+                    prio:16,
                     taskinfo:TaskInfoBlock{
                         task_syscall_times:[0;MAX_SYSCALL_NUM],
                         task_start_time:0,
@@ -189,6 +195,9 @@ impl TaskControlBlock {
                     parent: Some(Arc::downgrade(self)),
                     children: Vec::new(),
                     exit_code: 0,
+                    pass:0,
+                    stride:BigStride/16,
+                    prio:16,
                     taskinfo:TaskInfoBlock{
                         task_syscall_times:[0;MAX_SYSCALL_NUM],
                         task_start_time:0,
@@ -234,6 +243,9 @@ impl TaskControlBlock {
                     parent: Some(Arc::downgrade(self)),
                     children: Vec::new(),
                     exit_code: 0,
+                    pass:0,
+                    stride:BigStride/16,
+                    prio:16,
                     taskinfo:TaskInfoBlock{
                         task_syscall_times:[0;MAX_SYSCALL_NUM],
                         task_start_time:0,
@@ -252,6 +264,14 @@ impl TaskControlBlock {
             trap_handler as usize,
         );
         task_control_block
+    }
+    pub fn set_task_prio(&self,prio: isize){
+        self.inner_exclusive_access().prio=prio;
+        self.inner_exclusive_access().stride=BigStride/prio;
+    }
+    pub fn get_task_pass(&self) -> isize
+    {
+        self.inner_exclusive_access().pass
     }
 }
 

@@ -11,6 +11,7 @@ use alloc::sync::Arc;
 use lazy_static::*;
 use crate::config::PAGE_SIZE;
 use crate::mm::{PhysAddr,VirtPageNum,VirtAddr,MemorySet,MapPermission};
+use crate::config::BigStride;
 
 pub struct TaskManager {
     ready_queue: VecDeque<Arc<TaskControlBlock>>,
@@ -30,7 +31,19 @@ impl TaskManager {
     }
     /// Take a process out of the ready queue
     pub fn fetch(&mut self) -> Option<Arc<TaskControlBlock>> {
-        self.ready_queue.pop_front()
+        let mut maxpass=BigStride;
+        let mut mini=0;
+        for i in 0..self.ready_queue.len()
+        {
+            if self.ready_queue[i].get_task_pass()<maxpass{
+                maxpass=self.ready_queue[i].get_task_pass();
+                mini=i;
+            }
+        }
+        let mut inner=self.ready_queue[mini].inner_exclusive_access();
+        inner.pass+=inner.stride;
+        drop(inner);
+        self.ready_queue.remove(mini)
     }
     fn get_current_task_info(&self) -> TaskInfoBlock
     {
