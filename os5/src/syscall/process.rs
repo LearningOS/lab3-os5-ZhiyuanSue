@@ -5,7 +5,8 @@ use crate::mm::{translated_refmut, translated_str,get_ptr_physical_addr};
 use crate::task::{
     add_task, current_task, current_user_token, exit_current_and_run_next,
     suspend_current_and_run_next, TaskStatus,
-    task_map_an_area,task_unmap_an_area,get_current_task
+    task_map_an_area,task_unmap_an_area,get_current_task,
+    TaskControlBlock,
 };
 use crate::timer::get_time_us;
 use alloc::sync::Arc;
@@ -160,5 +161,15 @@ pub fn sys_munmap(_start: usize, _len: usize) -> isize {
 // YOUR JOB: 实现 sys_spawn 系统调用
 // ALERT: 注意在实现 SPAWN 时不需要复制父进程地址空间，SPAWN != FORK + EXEC 
 pub fn sys_spawn(_path: *const u8) -> isize {
-    -1
+    let token = current_user_token();
+    let path = translated_str(token, _path);
+    if let Some(data) = get_app_data_by_name(path.as_str()) {
+        let curr_task = current_task().unwrap();
+        let new_task = curr_task.spawn(data);
+        let new_pid = new_task.pid.0;
+        add_task(new_task);
+        new_pid as isize
+    } else {
+        -1
+    }
 }
